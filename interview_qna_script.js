@@ -5,8 +5,10 @@
   let items = loadItems();
   const revealedIds = new Set();
   let editingId = null;
-  let confirming = null; // { id, timeout }
+  let confirming = null; // { id, btnEl, timeout }
   let activeTab = "common";
+  let modalMode = "main"; // 'main' | 'followup'
+  let modalParentId = null;
   const CATEGORY_LABELS = { common: "공통질문", major: "전공질문" };
 
   const listEl = document.getElementById("list");
@@ -19,6 +21,7 @@
 
   const modalOverlay = document.getElementById("modalOverlay");
   const modalTitle = document.getElementById("modalTitle");
+  const catField = document.getElementById("catField");
   const catInput = document.getElementById("catInput");
   const qInput = document.getElementById("qInput");
   const aInput = document.getElementById("aInput");
@@ -36,6 +39,7 @@
       list.forEach((it) => {
         if (it.category !== "common" && it.category !== "major")
           it.category = "common";
+        if (!Array.isArray(it.followups)) it.followups = [];
       });
       return list;
     } catch (e) {
@@ -101,14 +105,19 @@
     editBtn.className = "icon-btn";
     editBtn.title = "수정";
     editBtn.textContent = "✎";
-    editBtn.addEventListener("click", () => openModal(item));
+    editBtn.addEventListener("click", () => openModal({ mode: "main", item }));
 
     const deleteBtn = document.createElement("button");
     deleteBtn.className = "icon-btn";
     deleteBtn.title = "삭제";
     deleteBtn.textContent = "🗑";
     deleteBtn.addEventListener("click", () =>
-      handleDeleteClick(item.id, deleteBtn),
+      handleDeleteClick(item.id, deleteBtn, () => {
+        items = items.filter((it) => it.id !== item.id);
+        revealedIds.delete(item.id);
+        saveItems();
+        render();
+      }),
     );
 
     actions.append(editBtn, deleteBtn);
@@ -133,9 +142,108 @@
     answerInner.appendChild(answerBody);
     answerWrap.appendChild(answerInner);
 
-    body.append(header, revealBtn, answerWrap);
+    const followupsSection = buildFollowupsSection(item);
+
+    body.append(header, revealBtn, answerWrap, followupsSection);
     card.append(rings, body);
     return card;
+  }
+
+  function buildFollowupsSection(item) {
+    const section = document.createElement("div");
+    section.className = "followups";
+
+    const followupsHeader = document.createElement("div");
+    followupsHeader.className = "followups-header";
+
+    const title = document.createElement("span");
+    title.className = "followups-title";
+    const followups = item.followups || [];
+    title.textContent = `꼬리질문 ${followups.length}개`;
+
+    const addFollowupBtn = document.createElement("button");
+    addFollowupBtn.className = "add-followup-btn";
+    addFollowupBtn.textContent = "+ 꼬리질문";
+    addFollowupBtn.addEventListener("click", () =>
+      openModal({ mode: "followup", parentId: item.id }),
+    );
+
+    followupsHeader.append(title, addFollowupBtn);
+    section.appendChild(followupsHeader);
+
+    followups.forEach((fu, i) =>
+      section.appendChild(buildFollowupItem(fu, i, item)),
+    );
+    return section;
+  }
+
+  function buildFollowupItem(fu, idx, parent) {
+    const row = document.createElement("div");
+    row.className = "followup-item";
+    row.dataset.id = fu.id;
+    if (revealedIds.has(fu.id)) row.classList.add("revealed");
+
+    const header = document.createElement("div");
+    header.className = "followup-header";
+
+    const tag = document.createElement("span");
+    tag.className = "followup-tag";
+    tag.textContent = `꼬리질문 ${idx + 1}`;
+
+    const qText = document.createElement("p");
+    qText.className = "followup-question";
+    qText.textContent = fu.q;
+
+    const actions = document.createElement("div");
+    actions.className = "card-actions";
+
+    const editBtn = document.createElement("button");
+    editBtn.className = "icon-btn";
+    editBtn.title = "수정";
+    editBtn.textContent = "✎";
+    editBtn.addEventListener("click", () =>
+      openModal({ mode: "followup", parentId: parent.id, item: fu }),
+    );
+
+    const deleteBtn = document.createElement("button");
+    deleteBtn.className = "icon-btn";
+    deleteBtn.title = "삭제";
+    deleteBtn.textContent = "🗑";
+    deleteBtn.addEventListener("click", () =>
+      handleDeleteClick(fu.id, deleteBtn, () => {
+        parent.followups = (parent.followups || []).filter(
+          (f) => f.id !== fu.id,
+        );
+        revealedIds.delete(fu.id);
+        saveItems();
+        render();
+      }),
+    );
+
+    actions.append(editBtn, deleteBtn);
+    header.append(tag, qText, actions);
+
+    const revealBtn = document.createElement("button");
+    revealBtn.className = "reveal-btn";
+    revealBtn.textContent = revealedIds.has(fu.id)
+      ? "🙈 답변 숨기기"
+      : "👁 정답 보기";
+    revealBtn.addEventListener("click", () =>
+      toggleReveal(fu.id, row, revealBtn),
+    );
+
+    const answerWrap = document.createElement("div");
+    answerWrap.className = "answer-wrap";
+    const answerInner = document.createElement("div");
+    answerInner.className = "answer-inner";
+    const answerBody = document.createElement("p");
+    answerBody.className = "answer-body";
+    answerBody.textContent = fu.a;
+    answerInner.appendChild(answerBody);
+    answerWrap.appendChild(answerInner);
+
+    row.append(header, revealBtn, answerWrap);
+    return row;
   }
 
   function toggleReveal(id, cardEl, btnEl) {
@@ -186,42 +294,45 @@
     });
   });
 
-  function handleDeleteClick(id, btnEl) {
+  function handleDeleteClick(id, btnEl, onConfirm) {
     if (confirming && confirming.id === id) {
       clearTimeout(confirming.timeout);
       confirming = null;
-      items = items.filter((it) => it.id !== id);
-      revealedIds.delete(id);
-      saveItems();
-      render();
+      onConfirm();
       return;
     }
     if (confirming) {
-      resetDeleteBtn(confirming.id);
+      resetDeleteBtn(confirming.btnEl);
       clearTimeout(confirming.timeout);
     }
     btnEl.textContent = "정말 삭제?";
     btnEl.classList.add("danger-confirm");
     const timeout = setTimeout(() => {
-      resetDeleteBtn(id);
+      resetDeleteBtn(btnEl);
       confirming = null;
     }, 3000);
-    confirming = { id, timeout };
+    confirming = { id, btnEl, timeout };
   }
-  function resetDeleteBtn(id) {
-    const card = document.querySelector(`.card[data-id="${id}"]`);
-    if (!card) return;
-    const btn = card.querySelectorAll(".icon-btn")[1];
-    if (btn) {
-      btn.textContent = "🗑";
-      btn.classList.remove("danger-confirm");
-    }
+  function resetDeleteBtn(btnEl) {
+    if (!btnEl) return;
+    btnEl.textContent = "🗑";
+    btnEl.classList.remove("danger-confirm");
   }
 
-  function openModal(item) {
+  function openModal(opts) {
+    opts = opts || {};
+    modalMode = opts.mode || "main";
+    modalParentId = opts.parentId || null;
+    const item = opts.item || null;
     editingId = item ? item.id : null;
-    modalTitle.textContent = item ? "질문 수정" : "질문 추가";
-    catInput.value = item ? item.category : activeTab;
+
+    catField.style.display = modalMode === "main" ? "" : "none";
+    if (modalMode === "main") {
+      modalTitle.textContent = item ? "질문 수정" : "질문 추가";
+      catInput.value = item ? item.category : activeTab;
+    } else {
+      modalTitle.textContent = item ? "꼬리질문 수정" : "꼬리질문 추가";
+    }
     qInput.value = item ? item.q : "";
     aInput.value = item ? item.a : "";
     modalOverlay.hidden = false;
@@ -232,12 +343,14 @@
     modalOverlay.hidden = true;
     document.body.classList.remove("modal-open");
     editingId = null;
+    modalMode = "main";
+    modalParentId = null;
     qInput.value = "";
     aInput.value = "";
   }
 
-  addBtn.addEventListener("click", () => openModal(null));
-  emptyAddBtn.addEventListener("click", () => openModal(null));
+  addBtn.addEventListener("click", () => openModal({ mode: "main" }));
+  emptyAddBtn.addEventListener("click", () => openModal({ mode: "main" }));
   cancelBtn.addEventListener("click", closeModal);
   modalOverlay.addEventListener("click", (e) => {
     if (e.target === modalOverlay) closeModal();
@@ -251,21 +364,39 @@
   saveBtn.addEventListener("click", () => {
     const q = qInput.value.trim();
     const a = aInput.value.trim();
-    const category = catInput.value === "major" ? "major" : "common";
     if (!q || !a) {
       alert("질문과 답변을 모두 입력해주세요.");
       return;
     }
-    if (editingId) {
-      const it = items.find((x) => x.id === editingId);
-      if (it) {
-        it.q = q;
-        it.a = a;
-        it.category = category;
+
+    if (modalMode === "main") {
+      const category = catInput.value === "major" ? "major" : "common";
+      if (editingId) {
+        const it = items.find((x) => x.id === editingId);
+        if (it) {
+          it.q = q;
+          it.a = a;
+          it.category = category;
+        }
+      } else {
+        items.push({ id: uid(), q, a, category, followups: [] });
       }
     } else {
-      items.push({ id: uid(), q, a, category });
+      const parent = items.find((x) => x.id === modalParentId);
+      if (parent) {
+        if (!Array.isArray(parent.followups)) parent.followups = [];
+        if (editingId) {
+          const fu = parent.followups.find((f) => f.id === editingId);
+          if (fu) {
+            fu.q = q;
+            fu.a = a;
+          }
+        } else {
+          parent.followups.push({ id: uid(), q, a });
+        }
+      }
     }
+
     saveItems();
     closeModal();
     render();

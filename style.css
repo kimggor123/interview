@@ -296,7 +296,8 @@ button {
   grid-template-rows: 0fr;
   transition: grid-template-rows 0.3s ease;
 }
-.card.revealed .answer-wrap {
+.card.revealed .answer-wrap,
+.followup-item.revealed .answer-wrap {
   grid-template-rows: 1fr;
 }
 .answer-inner {
@@ -376,6 +377,84 @@ button {
   justify-content: flex-end;
   gap: 8px;
   margin-top: 4px;
+}
+
+/* 꼬리질문 (follow-up questions) */
+.followups {
+  margin: 16px 0 0;
+  padding-top: 14px;
+  border-top: 1px dashed var(--border);
+}
+.followups-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  gap: 10px;
+}
+.followups-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  letter-spacing: 0.02em;
+}
+.add-followup-btn {
+  border: 1px dashed var(--gold);
+  background: transparent;
+  color: var(--gold);
+  padding: 6px 11px;
+  border-radius: 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.add-followup-btn:hover {
+  background: var(--gold-soft);
+}
+
+.followup-item {
+  position: relative;
+  margin-left: 6px;
+  padding: 12px 14px;
+  border-left: 2px solid var(--gold);
+  background: var(--accent-soft);
+  border-radius: 0 10px 10px 0;
+  margin-bottom: 10px;
+}
+.followup-item:last-child {
+  margin-bottom: 0;
+}
+.followup-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.followup-tag {
+  flex: none;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--gold);
+  border: 1px solid var(--gold);
+  border-radius: 999px;
+  padding: 2px 8px;
+  margin-top: 2px;
+  white-space: nowrap;
+}
+.followup-question {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  margin: 0;
+  padding-top: 1px;
+}
+.followup-item .reveal-btn {
+  font-size: 12.5px;
+  padding: 6px 10px;
+}
+.followup-item .answer-body {
+  font-size: 13.5px;
 }
 
 @media (prefers-reduced-motion: reduce) {
