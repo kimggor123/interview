@@ -139,6 +139,50 @@ button {
   filter: brightness(1.08);
 }
 
+.tabs {
+  display: flex;
+  gap: 8px;
+  margin: 24px 2px 4px;
+}
+.tab-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid var(--border);
+  background: var(--card-bg);
+  color: var(--text-secondary);
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 14px;
+  transition:
+    background 0.2s ease,
+    color 0.2s ease,
+    border-color 0.2s ease;
+}
+.tab-btn:hover {
+  border-color: var(--accent);
+}
+.tab-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.tab-count {
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.tab-btn.active .tab-count {
+  background: rgba(255, 255, 255, 0.25);
+  color: #fff;
+}
+
 .meta-row {
   display: flex;
   justify-content: space-between;
@@ -312,7 +356,8 @@ button {
   font-weight: 500;
   margin-bottom: 14px;
 }
-.modal textarea {
+.modal textarea,
+.modal select {
   width: 100%;
   margin-top: 6px;
   padding: 10px 12px;
@@ -322,6 +367,8 @@ button {
   color: var(--text);
   font-family: inherit;
   font-size: 14px;
+}
+.modal textarea {
   resize: vertical;
 }
 .modal-actions {

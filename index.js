@@ -6,6 +6,8 @@
   const revealedIds = new Set();
   let editingId = null;
   let confirming = null; // { id, timeout }
+  let activeTab = "common";
+  const CATEGORY_LABELS = { common: "공통질문", major: "전공질문" };
 
   const listEl = document.getElementById("list");
   const emptyState = document.getElementById("emptyState");
@@ -17,16 +19,25 @@
 
   const modalOverlay = document.getElementById("modalOverlay");
   const modalTitle = document.getElementById("modalTitle");
+  const catInput = document.getElementById("catInput");
   const qInput = document.getElementById("qInput");
   const aInput = document.getElementById("aInput");
   const saveBtn = document.getElementById("saveBtn");
   const cancelBtn = document.getElementById("cancelBtn");
+  const tabBtns = document.querySelectorAll(".tab-btn");
+  const commonCount = document.getElementById("commonCount");
+  const majorCount = document.getElementById("majorCount");
 
   function loadItems() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       const parsed = raw ? JSON.parse(raw) : [];
-      return Array.isArray(parsed) ? parsed : [];
+      const list = Array.isArray(parsed) ? parsed : [];
+      list.forEach((it) => {
+        if (it.category !== "common" && it.category !== "major")
+          it.category = "common";
+      });
+      return list;
     } catch (e) {
       return [];
     }
@@ -38,13 +49,26 @@
     return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
   }
 
+  function getVisibleItems() {
+    return items.filter((it) => it.category === activeTab);
+  }
+
   function render() {
     listEl.innerHTML = "";
-    countLabel.textContent = `총 ${items.length}개 질문`;
-    const hasItems = items.length > 0;
+    const visible = getVisibleItems();
+    countLabel.textContent = `${CATEGORY_LABELS[activeTab]} 총 ${visible.length}개`;
+    commonCount.textContent = items.filter(
+      (it) => it.category === "common",
+    ).length;
+    majorCount.textContent = items.filter(
+      (it) => it.category === "major",
+    ).length;
+    const hasItems = visible.length > 0;
     emptyState.hidden = hasItems;
+    emptyState.querySelector("p").textContent =
+      `아직 등록된 ${CATEGORY_LABELS[activeTab]}이 없어요. 첫 질문을 추가해보세요.`;
     toggleAllBtn.hidden = !hasItems;
-    items.forEach((item, idx) => listEl.appendChild(buildCard(item, idx)));
+    visible.forEach((item, idx) => listEl.appendChild(buildCard(item, idx)));
     updateToggleAllLabel();
   }
 
@@ -129,12 +153,12 @@
   }
 
   function updateToggleAllLabel() {
-    const anyHidden = items.some((it) => !revealedIds.has(it.id));
+    const anyHidden = getVisibleItems().some((it) => !revealedIds.has(it.id));
     toggleAllBtn.textContent = anyHidden ? "전체 보기" : "전체 숨기기";
   }
 
   toggleAllBtn.addEventListener("click", () => {
-    const anyHidden = items.some((it) => !revealedIds.has(it.id));
+    const anyHidden = getVisibleItems().some((it) => !revealedIds.has(it.id));
     document.querySelectorAll(".card").forEach((cardEl) => {
       const id = cardEl.dataset.id;
       const btnEl = cardEl.querySelector(".reveal-btn");
@@ -149,6 +173,17 @@
       }
     });
     updateToggleAllLabel();
+  });
+
+  tabBtns.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      activeTab = btn.dataset.cat;
+      tabBtns.forEach((b) => {
+        b.classList.toggle("active", b === btn);
+        b.setAttribute("aria-selected", b === btn ? "true" : "false");
+      });
+      render();
+    });
   });
 
   function handleDeleteClick(id, btnEl) {
@@ -186,6 +221,7 @@
   function openModal(item) {
     editingId = item ? item.id : null;
     modalTitle.textContent = item ? "질문 수정" : "질문 추가";
+    catInput.value = item ? item.category : activeTab;
     qInput.value = item ? item.q : "";
     aInput.value = item ? item.a : "";
     modalOverlay.hidden = false;
@@ -215,6 +251,7 @@
   saveBtn.addEventListener("click", () => {
     const q = qInput.value.trim();
     const a = aInput.value.trim();
+    const category = catInput.value === "major" ? "major" : "common";
     if (!q || !a) {
       alert("질문과 답변을 모두 입력해주세요.");
       return;
@@ -224,9 +261,10 @@
       if (it) {
         it.q = q;
         it.a = a;
+        it.category = category;
       }
     } else {
-      items.push({ id: uid(), q, a });
+      items.push({ id: uid(), q, a, category });
     }
     saveItems();
     closeModal();

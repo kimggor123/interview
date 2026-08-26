@@ -37,6 +37,25 @@
         </div>
       </header>
 
+      <div class="tabs" role="tablist">
+        <button
+          class="tab-btn active"
+          data-cat="common"
+          role="tab"
+          aria-selected="true"
+        >
+          공통질문 <span class="tab-count" id="commonCount">0</span>
+        </button>
+        <button
+          class="tab-btn"
+          data-cat="major"
+          role="tab"
+          aria-selected="false"
+        >
+          전공질문 <span class="tab-count" id="majorCount">0</span>
+        </button>
+      </div>
+
       <div class="meta-row">
         <span id="countLabel">총 0개 질문</span>
         <span class="storage-note">이 브라우저에만 저장돼요</span>
@@ -60,6 +79,13 @@
         aria-labelledby="modalTitle"
       >
         <h2 id="modalTitle">질문 추가</h2>
+        <label
+          >구분
+          <select id="catInput">
+            <option value="common">공통질문</option>
+            <option value="major">전공질문</option>
+          </select>
+        </label>
         <label
           >질문
           <textarea
