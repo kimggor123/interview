@@ -457,6 +457,128 @@ button {
   font-size: 13.5px;
 }
 
+.action-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+.action-row .reveal-btn {
+  margin-top: 0;
+}
+
+.test-toggle-btn {
+  border: 1px dashed var(--gold);
+  background: transparent;
+  color: var(--gold);
+  padding: 7px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+}
+.test-toggle-btn:hover {
+  background: var(--gold-soft);
+}
+.test-toggle-btn.active {
+  background: var(--gold);
+  border-color: var(--gold);
+  color: #fff;
+}
+.followup-item .test-toggle-btn {
+  font-size: 12.5px;
+  padding: 6px 10px;
+}
+
+.test-panel-outer {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.3s ease;
+}
+.test-panel-outer.open {
+  grid-template-rows: 1fr;
+}
+.test-panel-inner {
+  overflow: hidden;
+}
+.test-panel-content {
+  padding-top: 12px;
+  margin-top: 12px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.test-input {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 13.5px;
+  resize: vertical;
+}
+.test-grade-btn {
+  align-self: flex-start;
+  border: none;
+  background: var(--gold);
+  color: #fff;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.test-grade-btn:hover {
+  filter: brightness(1.08);
+}
+
+.test-result {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.test-percent {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+}
+.test-bar-track {
+  width: 100%;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  overflow: hidden;
+}
+.test-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.4s ease;
+}
+.test-bar-fill.low {
+  background: var(--danger);
+}
+.test-bar-fill.okay {
+  background: var(--gold);
+}
+.test-bar-fill.great {
+  background: #3fa66e;
+}
+.test-missing {
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+.test-missing-label {
+  font-weight: 700;
+  color: var(--text);
+}
+.test-perfect {
+  font-size: 13px;
+  font-weight: 600;
+  color: #3fa66e;
+}
+
 @media (prefers-reduced-motion: reduce) {
   * {
     transition: none !important;

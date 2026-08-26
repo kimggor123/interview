@@ -132,6 +132,12 @@
       toggleReveal(item.id, card, revealBtn),
     );
 
+    const testSection = buildTestSection(item);
+
+    const actionRow = document.createElement("div");
+    actionRow.className = "action-row";
+    actionRow.append(revealBtn, testSection.toggleBtn);
+
     const answerWrap = document.createElement("div");
     answerWrap.className = "answer-wrap";
     const answerInner = document.createElement("div");
@@ -144,7 +150,13 @@
 
     const followupsSection = buildFollowupsSection(item);
 
-    body.append(header, revealBtn, answerWrap, followupsSection);
+    body.append(
+      header,
+      actionRow,
+      answerWrap,
+      testSection.panelOuter,
+      followupsSection,
+    );
     card.append(rings, body);
     return card;
   }
@@ -232,6 +244,12 @@
       toggleReveal(fu.id, row, revealBtn),
     );
 
+    const testSection = buildTestSection(fu);
+
+    const actionRow = document.createElement("div");
+    actionRow.className = "action-row";
+    actionRow.append(revealBtn, testSection.toggleBtn);
+
     const answerWrap = document.createElement("div");
     answerWrap.className = "answer-wrap";
     const answerInner = document.createElement("div");
@@ -242,8 +260,147 @@
     answerInner.appendChild(answerBody);
     answerWrap.appendChild(answerInner);
 
-    row.append(header, revealBtn, answerWrap);
+    row.append(header, actionRow, answerWrap, testSection.panelOuter);
     return row;
+  }
+
+  function buildTestSection(item) {
+    const toggleBtn = document.createElement("button");
+    toggleBtn.className = "test-toggle-btn";
+    toggleBtn.textContent = "✏️ 암기 테스트";
+
+    const panelOuter = document.createElement("div");
+    panelOuter.className = "test-panel-outer";
+    const panelInner = document.createElement("div");
+    panelInner.className = "test-panel-inner";
+    const panelContent = document.createElement("div");
+    panelContent.className = "test-panel-content";
+
+    const textarea = document.createElement("textarea");
+    textarea.className = "test-input";
+    textarea.rows = 4;
+    textarea.placeholder = "정답을 보지 말고, 기억나는 대로 답변을 적어보세요";
+
+    const gradeBtn = document.createElement("button");
+    gradeBtn.className = "test-grade-btn";
+    gradeBtn.textContent = "채점하기";
+
+    const resultBox = document.createElement("div");
+    resultBox.className = "test-result";
+    resultBox.hidden = true;
+
+    function grade() {
+      const userText = textarea.value.trim();
+      if (!userText) {
+        textarea.focus();
+        return;
+      }
+      const { percent, missing } = compareAnswers(userText, item.a);
+      renderTestResult(resultBox, percent, missing);
+    }
+    gradeBtn.addEventListener("click", grade);
+    textarea.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) grade();
+    });
+
+    panelContent.append(textarea, gradeBtn, resultBox);
+    panelInner.appendChild(panelContent);
+    panelOuter.appendChild(panelInner);
+
+    toggleBtn.addEventListener("click", () => {
+      const isOpen = panelOuter.classList.toggle("open");
+      toggleBtn.classList.toggle("active", isOpen);
+      toggleBtn.textContent = isOpen ? "✏️ 테스트 닫기" : "✏️ 암기 테스트";
+      if (isOpen) textarea.focus();
+    });
+
+    return { toggleBtn, panelOuter };
+  }
+
+  function normalizeTokens(text) {
+    return text
+      .replace(/[.,!?~"'“”‘’()\[\]{}·:;\-_/\\]/g, " ")
+      .split(/\s+/)
+      .map((t) => t.trim())
+      .filter(Boolean);
+  }
+
+  function compareAnswers(userText, answerText) {
+    const userTokens = normalizeTokens(userText);
+    const answerTokens = normalizeTokens(answerText);
+    if (answerTokens.length === 0) return { percent: 0, missing: [] };
+
+    const userCount = {};
+    userTokens.forEach((t) => {
+      userCount[t] = (userCount[t] || 0) + 1;
+    });
+
+    let matched = 0;
+    const usedCount = {};
+    const missing = [];
+    answerTokens.forEach((t) => {
+      const used = usedCount[t] || 0;
+      if ((userCount[t] || 0) > used) {
+        matched++;
+        usedCount[t] = used + 1;
+      } else {
+        missing.push(t);
+      }
+    });
+
+    const percent = Math.round((matched / answerTokens.length) * 100);
+    const seen = new Set();
+    const missingUnique = missing.filter((t) => {
+      if (seen.has(t)) return false;
+      seen.add(t);
+      return true;
+    });
+
+    return { percent, missing: missingUnique };
+  }
+
+  function renderTestResult(box, percent, missing) {
+    box.hidden = false;
+    box.innerHTML = "";
+
+    const percentLabel = document.createElement("div");
+    percentLabel.className = "test-percent";
+    percentLabel.textContent = `일치율 ${percent}%`;
+
+    const barTrack = document.createElement("div");
+    barTrack.className = "test-bar-track";
+    const barFill = document.createElement("div");
+    barFill.className = "test-bar-fill";
+    barFill.style.width = percent + "%";
+    barFill.classList.add(
+      percent >= 80 ? "great" : percent >= 50 ? "okay" : "low",
+    );
+    barTrack.appendChild(barFill);
+
+    box.append(percentLabel, barTrack);
+
+    if (missing.length > 0) {
+      const missingBox = document.createElement("div");
+      missingBox.className = "test-missing";
+      const label = document.createElement("span");
+      label.className = "test-missing-label";
+      label.textContent = "놓친 키워드: ";
+      const words = document.createElement("span");
+      words.className = "test-missing-words";
+      const shown = missing.slice(0, 20);
+      words.textContent =
+        shown.join(", ") +
+        (missing.length > shown.length
+          ? ` 외 ${missing.length - shown.length}개`
+          : "");
+      missingBox.append(label, words);
+      box.appendChild(missingBox);
+    } else {
+      const perfect = document.createElement("div");
+      perfect.className = "test-perfect";
+      perfect.textContent = "핵심 단어를 모두 포함했어요! 🎉";
+      box.appendChild(perfect);
+    }
   }
 
   function toggleReveal(id, cardEl, btnEl) {
