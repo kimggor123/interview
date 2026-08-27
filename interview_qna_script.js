@@ -694,6 +694,10 @@
   saveBtn.addEventListener("click", () => {
     const q = qInput.value.trim();
     const a = aInput.value.trim();
+    const keywords = keywordsInput.value
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
     if (!q || !a) {
       alert("질문과 답변을 모두 입력해주세요.");
       return;
@@ -707,9 +711,10 @@
           it.q = q;
           it.a = a;
           it.category = category;
+          it.keywords = keywords;
         }
       } else {
-        items.push({ id: uid(), q, a, category, followups: [] });
+        items.push({ id: uid(), q, a, category, followups: [], keywords });
       }
     } else {
       const parent = items.find((x) => x.id === modalParentId);
@@ -720,9 +725,10 @@
           if (fu) {
             fu.q = q;
             fu.a = a;
+            fu.keywords = keywords;
           }
         } else {
-          parent.followups.push({ id: uid(), q, a });
+          parent.followups.push({ id: uid(), q, a, keywords });
         }
       }
     }

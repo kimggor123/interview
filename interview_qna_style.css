@@ -358,7 +358,8 @@ button {
   margin-bottom: 14px;
 }
 .modal textarea,
-.modal select {
+.modal select,
+.modal input[type="text"] {
   width: 100%;
   margin-top: 6px;
   padding: 10px 12px;
@@ -371,6 +372,11 @@ button {
 }
 .modal textarea {
   resize: vertical;
+}
+.field-hint {
+  font-weight: 400;
+  opacity: 0.75;
+  font-size: 12px;
 }
 .modal-actions {
   display: flex;
@@ -518,6 +524,9 @@ button {
   font-family: inherit;
   font-size: 13.5px;
   resize: vertical;
+}
+.test-input:focus-visible {
+  outline-offset: -2px;
 }
 .test-grade-btn {
   align-self: flex-start;
