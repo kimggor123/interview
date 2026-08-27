@@ -1,74 +1,130 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ko">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>면접 예상질문 노트</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@500;700&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="interview_qna_style.css">
-</head>
-<body>
-  <div class="app">
-    <header class="topbar">
-      <div class="brand">
-        <span class="brand-mark">✎</span>
-        <div>
-          <h1>면접 예상질문 노트</h1>
-          <p class="subtitle">질문을 등록하고, 필요할 때만 답을 펼쳐보세요</p>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>면접 예상질문 노트</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@500;700&family=Noto+Sans+KR:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="interview_qna_style.css" />
+  </head>
+  <body>
+    <div class="app">
+      <header class="topbar">
+        <div class="brand">
+          <span class="brand-mark">✎</span>
+          <div>
+            <h1>면접 예상질문 노트</h1>
+            <p class="subtitle">질문을 등록하고, 필요할 때만 답을 펼쳐보세요</p>
+          </div>
+        </div>
+        <div class="topbar-actions">
+          <button id="toggleAllBtn" class="btn btn-ghost" hidden>
+            전체 보기
+          </button>
+          <button
+            id="themeBtn"
+            class="btn btn-icon"
+            aria-label="다크 모드 전환"
+          >
+            🌙
+          </button>
+          <button id="addBtn" class="btn btn-primary">+ 질문 추가</button>
+        </div>
+      </header>
+
+      <div class="tabs" role="tablist">
+        <button
+          class="tab-btn active"
+          data-cat="common"
+          role="tab"
+          aria-selected="true"
+        >
+          공통질문 <span class="tab-count" id="commonCount">0</span>
+        </button>
+        <button
+          class="tab-btn"
+          data-cat="major"
+          role="tab"
+          aria-selected="false"
+        >
+          전공질문 <span class="tab-count" id="majorCount">0</span>
+        </button>
+        <button
+          class="tab-btn"
+          data-cat="keywords"
+          role="tab"
+          aria-selected="false"
+        >
+          키워드 <span class="tab-count" id="keywordTabCount">0</span>
+        </button>
+      </div>
+
+      <div class="meta-row">
+        <span id="countLabel">총 0개 질문</span>
+        <span class="storage-note">이 브라우저에만 저장돼요</span>
+      </div>
+
+      <main id="list" class="list"></main>
+
+      <div id="emptyState" class="empty-state">
+        <p>아직 등록된 질문이 없어요. 첫 질문을 추가해보세요.</p>
+        <button id="emptyAddBtn" class="btn btn-primary">
+          첫 질문 추가하기
+        </button>
+      </div>
+    </div>
+
+    <div id="modalOverlay" class="modal-overlay" hidden>
+      <div
+        class="modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="modalTitle"
+      >
+        <h2 id="modalTitle">질문 추가</h2>
+        <label id="catField"
+          >구분
+          <select id="catInput">
+            <option value="common">공통질문</option>
+            <option value="major">전공질문</option>
+          </select>
+        </label>
+        <label
+          >질문
+          <textarea
+            id="qInput"
+            rows="3"
+            placeholder="예: RESTful API의 특징을 설명해보세요"
+          ></textarea>
+        </label>
+        <label
+          >답변
+          <textarea
+            id="aInput"
+            rows="7"
+            placeholder="답변을 작성하세요"
+          ></textarea>
+        </label>
+        <label
+          >핵심 키워드 <span class="field-hint">(선택, 쉼표로 구분)</span>
+          <input
+            type="text"
+            id="keywordsInput"
+            placeholder="예: 인증, 토큰, 세션"
+          />
+        </label>
+        <div class="modal-actions">
+          <button id="cancelBtn" class="btn btn-ghost">취소</button>
+          <button id="saveBtn" class="btn btn-primary">저장</button>
         </div>
       </div>
-      <div class="topbar-actions">
-        <button id="toggleAllBtn" class="btn btn-ghost" hidden>전체 보기</button>
-        <button id="themeBtn" class="btn btn-icon" aria-label="다크 모드 전환">🌙</button>
-        <button id="addBtn" class="btn btn-primary">+ 질문 추가</button>
-      </div>
-    </header>
-
-    <div class="tabs" role="tablist">
-      <button class="tab-btn active" data-cat="common" role="tab" aria-selected="true">공통질문 <span class="tab-count" id="commonCount">0</span></button>
-      <button class="tab-btn" data-cat="major" role="tab" aria-selected="false">전공질문 <span class="tab-count" id="majorCount">0</span></button>
     </div>
 
-    <div class="meta-row">
-      <span id="countLabel">총 0개 질문</span>
-      <span class="storage-note">이 브라우저에만 저장돼요</span>
-    </div>
-
-    <main id="list" class="list"></main>
-
-    <div id="emptyState" class="empty-state">
-      <p>아직 등록된 질문이 없어요. 첫 질문을 추가해보세요.</p>
-      <button id="emptyAddBtn" class="btn btn-primary">첫 질문 추가하기</button>
-    </div>
-  </div>
-
-  <div id="modalOverlay" class="modal-overlay" hidden>
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
-      <h2 id="modalTitle">질문 추가</h2>
-      <label id="catField">구분
-        <select id="catInput">
-          <option value="common">공통질문</option>
-          <option value="major">전공질문</option>
-        </select>
-      </label>
-      <label>질문
-        <textarea id="qInput" rows="3" placeholder="예: RESTful API의 특징을 설명해보세요"></textarea>
-      </label>
-      <label>답변
-        <textarea id="aInput" rows="7" placeholder="답변을 작성하세요"></textarea>
-      </label>
-      <label>핵심 키워드 <span class="field-hint">(선택, 쉼표로 구분)</span>
-        <input type="text" id="keywordsInput" placeholder="예: 인증, 토큰, 세션">
-      </label>
-      <div class="modal-actions">
-        <button id="cancelBtn" class="btn btn-ghost">취소</button>
-        <button id="saveBtn" class="btn btn-primary">저장</button>
-      </div>
-    </div>
-  </div>
-
-<script src="interview_qna_script.js"></script>
-</body>
+    <script src="interview_qna_script.js"></script>
+  </body>
 </html>

@@ -588,6 +588,98 @@ button {
   color: #3fa66e;
 }
 
+.list.keyword-mode {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 14px;
+}
+
+.flip-card {
+  height: 170px;
+  perspective: 1200px;
+  cursor: pointer;
+  border-radius: 14px;
+}
+.flip-card:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.flip-card-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transition: transform 0.5s cubic-bezier(0.4, 0.2, 0.2, 1);
+  transform-style: preserve-3d;
+}
+.flip-card.flipped .flip-card-inner {
+  transform: rotateY(180deg);
+}
+.flip-card-front,
+.flip-card-back {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  border-radius: 14px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 8px;
+  overflow: hidden;
+}
+.flip-card-front {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  box-shadow: 0 2px 10px var(--shadow);
+}
+.flip-card-back {
+  background: var(--accent);
+  color: #fff;
+  transform: rotateY(180deg);
+}
+.flip-card-tag {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--gold);
+  border: 1px solid var(--gold);
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+.flip-card-question {
+  font-size: 14px;
+  line-height: 1.5;
+  font-weight: 600;
+  white-space: pre-wrap;
+  overflow-y: auto;
+  max-height: 96px;
+}
+.flip-card-hint {
+  font-size: 10.5px;
+  opacity: 0.55;
+  margin-top: auto;
+}
+.flip-card-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+  overflow-y: auto;
+  max-height: 130px;
+}
+.flip-card-chip {
+  background: rgba(255, 255, 255, 0.22);
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.flip-card-empty {
+  font-size: 13px;
+  opacity: 0.9;
+}
+
 @media (prefers-reduced-motion: reduce) {
   * {
     transition: none !important;
