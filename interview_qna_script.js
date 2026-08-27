@@ -283,6 +283,8 @@
 
     const textarea = document.createElement("textarea");
     textarea.className = "test-input";
+    textarea.name = `test-answer-${item.id}`;
+    textarea.autocomplete = "off";
     textarea.rows = 4;
     textarea.placeholder = "정답을 보지 말고, 기억나는 대로 답변을 적어보세요";
 
