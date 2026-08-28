@@ -83,7 +83,7 @@
 
     const isKeywordsTab = activeTab === "keywords";
     listEl.classList.toggle("keyword-mode", isKeywordsTab);
-    addBtn.hidden = isKeywordsTab;
+    addBtn.textContent = isKeywordsTab ? "+ 카드 추가" : "+ 질문 추가";
     importBtn.hidden = isKeywordsTab;
     listEl.innerHTML = "";
 
@@ -92,8 +92,8 @@
       const hasItems = items.length > 0;
       emptyState.hidden = hasItems;
       emptyState.querySelector("p").textContent =
-        "아직 등록된 질문이 없어요. 공통질문/전공질문 탭에서 먼저 질문을 추가해보세요.";
-      emptyAddBtn.hidden = true;
+        "아직 등록된 질문이 없어요. + 카드 추가로 만들어보세요.";
+      emptyAddBtn.hidden = false;
       toggleAllBtn.hidden = !hasItems;
       items.forEach((item) => listEl.appendChild(buildFlipCard(item)));
     } else {
@@ -117,6 +117,43 @@
     card.tabIndex = 0;
     card.setAttribute("role", "button");
     card.setAttribute("aria-label", "클릭하면 키워드가 보입니다");
+
+    const controls = document.createElement("div");
+    controls.className = "flip-card-controls";
+
+    const dragHandle = document.createElement("span");
+    dragHandle.className = "flip-card-handle";
+    dragHandle.textContent = "⠿";
+    dragHandle.title = "드래그해서 순서 변경";
+    dragHandle.addEventListener("mousedown", () => {
+      card.draggable = true;
+    });
+    dragHandle.addEventListener("click", (e) => e.stopPropagation());
+
+    const editBtn = document.createElement("button");
+    editBtn.className = "icon-btn";
+    editBtn.title = "수정";
+    editBtn.textContent = "✎";
+    editBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      openModal({ mode: "main", item });
+    });
+
+    const deleteBtn = document.createElement("button");
+    deleteBtn.className = "icon-btn";
+    deleteBtn.title = "삭제";
+    deleteBtn.textContent = "🗑";
+    deleteBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      handleDeleteClick(item.id, deleteBtn, () => {
+        items = items.filter((it) => it.id !== item.id);
+        revealedIds.delete(item.id);
+        saveItems();
+        render();
+      });
+    });
+
+    controls.append(dragHandle, editBtn, deleteBtn);
 
     const inner = document.createElement("div");
     inner.className = "flip-card-inner";
@@ -155,7 +192,7 @@
     }
 
     inner.append(front, back);
-    card.appendChild(inner);
+    card.append(controls, inner);
 
     function flip() {
       card.classList.toggle("flipped");
@@ -169,8 +206,61 @@
       }
     });
 
+    card.addEventListener("dragstart", (e) => {
+      e.dataTransfer.effectAllowed = "move";
+      e.dataTransfer.setData("text/plain", item.id);
+      card.classList.add("dragging");
+    });
+    card.addEventListener("dragend", () => {
+      card.classList.remove("dragging");
+      card.draggable = false;
+    });
+
     return card;
   }
+
+  // 그리드 안에서 드래그 중인 카드를 삽입할 위치를 찾는다 (커서보다 아래에 있는 카드 중 가장 가까운 것).
+  function getDragAfterElement(container, x, y) {
+    const candidates = [
+      ...container.querySelectorAll(".flip-card:not(.dragging)"),
+    ];
+    return candidates.reduce(
+      (closest, child) => {
+        const box = child.getBoundingClientRect();
+        const offsetY = y - box.top - box.height / 2;
+        const offsetX = x - box.left - box.width / 2;
+        const offset = Math.hypot(offsetX, offsetY);
+        if (offsetY < 0 && offset < closest.offset) {
+          return { offset, element: child };
+        }
+        return closest;
+      },
+      { offset: Infinity, element: null },
+    ).element;
+  }
+
+  listEl.addEventListener("dragover", (e) => {
+    if (activeTab !== "keywords") return;
+    const dragging = listEl.querySelector(".flip-card.dragging");
+    if (!dragging) return;
+    e.preventDefault();
+    const afterElement = getDragAfterElement(listEl, e.clientX, e.clientY);
+    if (afterElement == null) {
+      listEl.appendChild(dragging);
+    } else {
+      listEl.insertBefore(dragging, afterElement);
+    }
+  });
+  listEl.addEventListener("drop", (e) => {
+    if (activeTab !== "keywords") return;
+    e.preventDefault();
+    const newOrderIds = Array.from(listEl.querySelectorAll(".flip-card")).map(
+      (el) => el.dataset.id,
+    );
+    items.sort((a, b) => newOrderIds.indexOf(a.id) - newOrderIds.indexOf(b.id));
+    saveItems();
+    render();
+  });
 
   function buildCard(item, idx) {
     const card = document.createElement("article");
@@ -767,7 +857,11 @@
     catField.style.display = modalMode === "main" ? "" : "none";
     if (modalMode === "main") {
       modalTitle.textContent = item ? "질문 수정" : "질문 추가";
-      catInput.value = item ? item.category : activeTab;
+      catInput.value = item
+        ? item.category
+        : activeTab === "keywords"
+          ? "common"
+          : activeTab;
     } else {
       modalTitle.textContent = item ? "꼬리질문 수정" : "꼬리질문 추가";
     }

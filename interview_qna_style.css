@@ -597,10 +597,51 @@ button {
 }
 
 .flip-card {
+  position: relative;
   height: 170px;
   perspective: 1200px;
   cursor: pointer;
   border-radius: 14px;
+}
+.flip-card.dragging {
+  opacity: 0.35;
+}
+.flip-card-controls {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 2px;
+  box-shadow: 0 1px 6px var(--shadow);
+}
+.flip-card-controls .icon-btn {
+  width: 24px;
+  height: 24px;
+  font-size: 12px;
+}
+.flip-card-controls .icon-btn.danger-confirm {
+  font-size: 10px;
+  padding: 0 6px;
+}
+.flip-card-handle {
+  cursor: grab;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+.flip-card-handle:active {
+  cursor: grabbing;
 }
 .flip-card:focus-visible {
   outline: 2px solid var(--accent);
