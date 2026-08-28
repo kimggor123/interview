@@ -1,5 +1,5 @@
 (function () {
-  const STORAGE_KEY = "interviewQnA.items.v1";
+  const STORAGE_KEY = `interviewQnA.items.v1`;
   const THEME_KEY = "interviewQnA.theme.v1";
 
   let items = loadItems();
@@ -18,6 +18,13 @@
   const themeBtn = document.getElementById("themeBtn");
   const addBtn = document.getElementById("addBtn");
   const emptyAddBtn = document.getElementById("emptyAddBtn");
+  const importBtn = document.getElementById("importBtn");
+  const importOverlay = document.getElementById("importOverlay");
+  const importCatInput = document.getElementById("importCatInput");
+  const importInput = document.getElementById("importInput");
+  const importPreview = document.getElementById("importPreview");
+  const importCancelBtn = document.getElementById("importCancelBtn");
+  const importConfirmBtn = document.getElementById("importConfirmBtn");
 
   const modalOverlay = document.getElementById("modalOverlay");
   const modalTitle = document.getElementById("modalTitle");
@@ -31,6 +38,7 @@
   const tabBtns = document.querySelectorAll(".tab-btn");
   const commonCount = document.getElementById("commonCount");
   const majorCount = document.getElementById("majorCount");
+  const keywordTabCount = document.getElementById("keywordTabCount");
 
   function loadItems() {
     try {
@@ -63,22 +71,105 @@
   }
 
   function render() {
-    listEl.innerHTML = "";
-    const visible = getVisibleItems();
-    countLabel.textContent = `${CATEGORY_LABELS[activeTab]} 총 ${visible.length}개`;
     commonCount.textContent = items.filter(
       (it) => it.category === "common",
     ).length;
     majorCount.textContent = items.filter(
       (it) => it.category === "major",
     ).length;
-    const hasItems = visible.length > 0;
-    emptyState.hidden = hasItems;
-    emptyState.querySelector("p").textContent =
-      `아직 등록된 ${CATEGORY_LABELS[activeTab]}이 없어요. 첫 질문을 추가해보세요.`;
-    toggleAllBtn.hidden = !hasItems;
-    visible.forEach((item, idx) => listEl.appendChild(buildCard(item, idx)));
+    keywordTabCount.textContent = items.filter(
+      (it) => it.keywords && it.keywords.length > 0,
+    ).length;
+
+    const isKeywordsTab = activeTab === "keywords";
+    listEl.classList.toggle("keyword-mode", isKeywordsTab);
+    addBtn.hidden = isKeywordsTab;
+    importBtn.hidden = isKeywordsTab;
+    listEl.innerHTML = "";
+
+    if (isKeywordsTab) {
+      countLabel.textContent = `키워드 카드 총 ${items.length}개`;
+      const hasItems = items.length > 0;
+      emptyState.hidden = hasItems;
+      emptyState.querySelector("p").textContent =
+        "아직 등록된 질문이 없어요. 공통질문/전공질문 탭에서 먼저 질문을 추가해보세요.";
+      emptyAddBtn.hidden = true;
+      toggleAllBtn.hidden = !hasItems;
+      items.forEach((item) => listEl.appendChild(buildFlipCard(item)));
+    } else {
+      const visible = getVisibleItems();
+      countLabel.textContent = `${CATEGORY_LABELS[activeTab]} 총 ${visible.length}개`;
+      const hasItems = visible.length > 0;
+      emptyState.hidden = hasItems;
+      emptyState.querySelector("p").textContent =
+        `아직 등록된 ${CATEGORY_LABELS[activeTab]}이 없어요. 첫 질문을 추가해보세요.`;
+      emptyAddBtn.hidden = false;
+      toggleAllBtn.hidden = !hasItems;
+      visible.forEach((item, idx) => listEl.appendChild(buildCard(item, idx)));
+    }
     updateToggleAllLabel();
+  }
+
+  function buildFlipCard(item) {
+    const card = document.createElement("div");
+    card.className = "flip-card";
+    card.dataset.id = item.id;
+    card.tabIndex = 0;
+    card.setAttribute("role", "button");
+    card.setAttribute("aria-label", "클릭하면 키워드가 보입니다");
+
+    const inner = document.createElement("div");
+    inner.className = "flip-card-inner";
+
+    const front = document.createElement("div");
+    front.className = "flip-card-front";
+    const tag = document.createElement("span");
+    tag.className = "flip-card-tag";
+    tag.textContent = CATEGORY_LABELS[item.category] || "";
+    const qText = document.createElement("p");
+    qText.className = "flip-card-question";
+    qText.textContent = item.q;
+    const hint = document.createElement("span");
+    hint.className = "flip-card-hint";
+    hint.textContent = "클릭해서 뒤집기";
+    front.append(tag, qText, hint);
+
+    const back = document.createElement("div");
+    back.className = "flip-card-back";
+    const hasKeywords = item.keywords && item.keywords.length > 0;
+    if (hasKeywords) {
+      const chips = document.createElement("div");
+      chips.className = "flip-card-chips";
+      item.keywords.forEach((k) => {
+        const chip = document.createElement("span");
+        chip.className = "flip-card-chip";
+        chip.textContent = k;
+        chips.appendChild(chip);
+      });
+      back.appendChild(chips);
+    } else {
+      const empty = document.createElement("p");
+      empty.className = "flip-card-empty";
+      empty.textContent = "등록된 키워드가 없어요";
+      back.appendChild(empty);
+    }
+
+    inner.append(front, back);
+    card.appendChild(inner);
+
+    function flip() {
+      card.classList.toggle("flipped");
+      updateToggleAllLabel();
+    }
+    card.addEventListener("click", flip);
+    card.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        flip();
+      }
+    });
+
+    return card;
   }
 
   function buildCard(item, idx) {
@@ -144,12 +235,13 @@
     actionRow.append(revealBtn, testSection.toggleBtn);
 
     const answerWrap = document.createElement("div");
-    answerWrap.className = "answer-wrap";
+    answerWrap.className = "answer-wrap qa-answer";
     const answerInner = document.createElement("div");
     answerInner.className = "answer-inner";
     const answerBody = document.createElement("p");
     answerBody.className = "answer-body";
-    answerBody.textContent = item.a;
+    answerBody.textContent =
+      item.a || "(답변 미작성 — ✎ 버튼으로 답변을 추가해보세요)";
     answerInner.appendChild(answerBody);
     answerWrap.appendChild(answerInner);
 
@@ -256,7 +348,7 @@
     actionRow.append(revealBtn, testSection.toggleBtn);
 
     const answerWrap = document.createElement("div");
-    answerWrap.className = "answer-wrap";
+    answerWrap.className = "answer-wrap fu-answer";
     const answerInner = document.createElement("div");
     answerInner.className = "answer-inner";
     const answerBody = document.createElement("p");
@@ -591,11 +683,27 @@
   }
 
   function updateToggleAllLabel() {
+    if (activeTab === "keywords") {
+      const anyUnflipped = Array.from(
+        document.querySelectorAll(".flip-card"),
+      ).some((c) => !c.classList.contains("flipped"));
+      toggleAllBtn.textContent = anyUnflipped ? "전체 뒤집기" : "전체 앞면으로";
+      return;
+    }
     const anyHidden = getVisibleItems().some((it) => !revealedIds.has(it.id));
     toggleAllBtn.textContent = anyHidden ? "전체 보기" : "전체 숨기기";
   }
 
   toggleAllBtn.addEventListener("click", () => {
+    if (activeTab === "keywords") {
+      const cards = document.querySelectorAll(".flip-card");
+      const anyUnflipped = Array.from(cards).some(
+        (c) => !c.classList.contains("flipped"),
+      );
+      cards.forEach((c) => c.classList.toggle("flipped", anyUnflipped));
+      updateToggleAllLabel();
+      return;
+    }
     const anyHidden = getVisibleItems().some((it) => !revealedIds.has(it.id));
     document.querySelectorAll(".card").forEach((cardEl) => {
       const id = cardEl.dataset.id;
@@ -688,7 +796,10 @@
     if (e.target === modalOverlay) closeModal();
   });
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && !modalOverlay.hidden) closeModal();
+    if (e.key === "Escape") {
+      if (!modalOverlay.hidden) closeModal();
+      if (!importOverlay.hidden) closeImportModal();
+    }
     if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && !modalOverlay.hidden)
       saveBtn.click();
   });
@@ -737,6 +848,122 @@
 
     saveItems();
     closeModal();
+    render();
+  });
+
+  function parseImportText(text) {
+    const lines = text
+      .split(/\r?\n/)
+      .map((l) => l.trim())
+      .filter(Boolean);
+    const results = [];
+
+    for (const line of lines) {
+      if (/^#{1,6}\s/.test(line)) continue; // 마크다운 헤딩(섹션 제목)은 건너뜀
+      if (/^\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)+\|?$/.test(line)) continue; // 표 구분선(|---|---|) 건너뜀
+
+      let question = "";
+      let keywordsRaw = "";
+
+      if (line.includes("|")) {
+        let cells = line.split("|").map((c) => c.trim());
+        if (cells[0] === "") cells.shift();
+        if (cells[cells.length - 1] === "") cells.pop();
+        if (cells.length === 0) continue;
+        const joined = cells.join(" ");
+        if (
+          /^(번호|no\.?|#)$/i.test(cells[0]) ||
+          (joined.includes("질문") &&
+            (joined.includes("키워드") || joined.includes("답변")))
+        )
+          continue; // 헤더 행 건너뜀
+
+        if (cells.length >= 3) {
+          question = cells[1];
+          keywordsRaw = cells.slice(2).join(", ");
+        } else if (cells.length === 2) {
+          question = cells[0];
+          keywordsRaw = cells[1];
+        } else {
+          question = cells[0];
+        }
+      } else if (line.includes("\t")) {
+        const parts = line.split("\t").map((s) => s.trim());
+        question = parts[0];
+        keywordsRaw = parts.slice(1).join(", ");
+      } else if (line.includes("::")) {
+        const idx = line.indexOf("::");
+        question = line.slice(0, idx).trim();
+        keywordsRaw = line.slice(idx + 2).trim();
+      } else {
+        question = line;
+      }
+
+      question = question.replace(/^\d+[.)]\s*/, "").trim();
+      if (!question) continue;
+
+      const keywords = keywordsRaw
+        ? keywordsRaw
+            .replace(/[()]/g, ",")
+            .split(/[,·/]+/)
+            .map((s) => s.trim())
+            .filter(Boolean)
+        : [];
+
+      results.push({ q: question, keywords });
+    }
+    return results;
+  }
+
+  function updateImportPreview() {
+    const parsed = parseImportText(importInput.value);
+    importPreview.textContent = `${parsed.length}개 항목 인식됨`;
+  }
+  importInput.addEventListener("input", updateImportPreview);
+
+  function openImportModal() {
+    importCatInput.value = activeTab === "major" ? "major" : "common";
+    importInput.value = "";
+    updateImportPreview();
+    importOverlay.hidden = false;
+    document.body.classList.add("modal-open");
+    importInput.focus();
+  }
+  function closeImportModal() {
+    importOverlay.hidden = true;
+    document.body.classList.remove("modal-open");
+  }
+  importBtn.addEventListener("click", openImportModal);
+  importCancelBtn.addEventListener("click", closeImportModal);
+  importOverlay.addEventListener("click", (e) => {
+    if (e.target === importOverlay) closeImportModal();
+  });
+
+  importConfirmBtn.addEventListener("click", () => {
+    const parsed = parseImportText(importInput.value);
+    if (parsed.length === 0) {
+      alert("인식된 질문이 없어요. 형식을 확인해주세요.");
+      return;
+    }
+    const category = importCatInput.value === "major" ? "major" : "common";
+    parsed.forEach((p) => {
+      items.push({
+        id: uid(),
+        q: p.q,
+        a: "",
+        category,
+        followups: [],
+        keywords: p.keywords,
+      });
+    });
+    saveItems();
+    closeImportModal();
+    activeTab = category;
+    tabBtns.forEach((b) => {
+      const match = b.dataset.cat === category;
+      b.classList.toggle("active", match);
+      b.setAttribute("aria-selected", match ? "true" : "false");
+    });
     render();
   });
 
