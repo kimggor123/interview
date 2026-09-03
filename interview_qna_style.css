@@ -183,6 +183,33 @@ button {
   color: #fff;
 }
 
+.keyword-subfilter {
+  display: flex;
+  gap: 6px;
+  margin: 10px 2px 0;
+}
+.subfilter-btn {
+  border: 1px solid var(--border);
+  background: var(--card-bg);
+  color: var(--text-secondary);
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 600;
+  transition:
+    background 0.2s ease,
+    color 0.2s ease,
+    border-color 0.2s ease;
+}
+.subfilter-btn:hover {
+  border-color: var(--accent);
+}
+.subfilter-btn.active {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
 .meta-row {
   display: flex;
   justify-content: space-between;
@@ -738,6 +765,39 @@ button {
   font-weight: 600;
   color: var(--accent);
   margin: -6px 0 4px;
+}
+
+.backup-heading {
+  font-size: 14px;
+  margin: 18px 0 4px;
+}
+.backup-heading:first-of-type {
+  margin-top: 4px;
+}
+.backup-desc {
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  margin: 0 0 10px;
+}
+.backup-btn {
+  width: 100%;
+}
+.backup-merge-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text);
+  margin-bottom: 10px;
+}
+.backup-merge-toggle input {
+  width: auto;
+  margin: 0;
+}
+#backupFileInput {
+  width: 100%;
+  font-size: 12.5px;
+  color: var(--text-secondary);
 }
 
 @media (prefers-reduced-motion: reduce) {

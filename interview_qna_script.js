@@ -7,6 +7,7 @@
   let editingId = null;
   let confirming = null; // { id, btnEl, timeout }
   let activeTab = "common";
+  let keywordSubFilter = "all"; // 'all' | 'common' | 'major' — 키워드 탭 안에서의 하위 필터
   let modalMode = "main"; // 'main' | 'followup'
   let modalParentId = null;
   const CATEGORY_LABELS = { common: "공통질문", major: "전공질문" };
@@ -26,6 +27,13 @@
   const importCancelBtn = document.getElementById("importCancelBtn");
   const importConfirmBtn = document.getElementById("importConfirmBtn");
 
+  const backupBtn = document.getElementById("backupBtn");
+  const backupOverlay = document.getElementById("backupOverlay");
+  const backupCloseBtn = document.getElementById("backupCloseBtn");
+  const exportBtn = document.getElementById("exportBtn");
+  const backupFileInput = document.getElementById("backupFileInput");
+  const importMergeCheckbox = document.getElementById("importMergeCheckbox");
+
   const modalOverlay = document.getElementById("modalOverlay");
   const modalTitle = document.getElementById("modalTitle");
   const catField = document.getElementById("catField");
@@ -39,6 +47,8 @@
   const commonCount = document.getElementById("commonCount");
   const majorCount = document.getElementById("majorCount");
   const keywordTabCount = document.getElementById("keywordTabCount");
+  const keywordSubfilterBar = document.getElementById("keywordSubfilter");
+  const subfilterBtns = document.querySelectorAll(".subfilter-btn");
 
   function loadItems() {
     try {
@@ -85,17 +95,27 @@
     listEl.classList.toggle("keyword-mode", isKeywordsTab);
     addBtn.textContent = isKeywordsTab ? "+ 카드 추가" : "+ 질문 추가";
     importBtn.hidden = isKeywordsTab;
+    keywordSubfilterBar.hidden = !isKeywordsTab;
     listEl.innerHTML = "";
 
     if (isKeywordsTab) {
-      countLabel.textContent = `키워드 카드 총 ${items.length}개`;
-      const hasItems = items.length > 0;
+      const filtered =
+        keywordSubFilter === "all"
+          ? items
+          : items.filter((it) => it.category === keywordSubFilter);
+      const subLabel =
+        keywordSubFilter === "all" ? "" : CATEGORY_LABELS[keywordSubFilter];
+      countLabel.textContent = subLabel
+        ? `${subLabel} 키워드 카드 총 ${filtered.length}개`
+        : `키워드 카드 총 ${filtered.length}개`;
+      const hasItems = filtered.length > 0;
       emptyState.hidden = hasItems;
-      emptyState.querySelector("p").textContent =
-        "아직 등록된 질문이 없어요. + 카드 추가로 만들어보세요.";
+      emptyState.querySelector("p").textContent = subLabel
+        ? `아직 등록된 ${subLabel}이 없어요. + 카드 추가로 만들어보세요.`
+        : "아직 등록된 질문이 없어요. + 카드 추가로 만들어보세요.";
       emptyAddBtn.hidden = false;
       toggleAllBtn.hidden = !hasItems;
-      items.forEach((item) => listEl.appendChild(buildFlipCard(item)));
+      filtered.forEach((item) => listEl.appendChild(buildFlipCard(item)));
     } else {
       const visible = getVisibleItems();
       countLabel.textContent = `${CATEGORY_LABELS[activeTab]} 총 ${visible.length}개`;
@@ -257,10 +277,21 @@
     const newOrderIds = Array.from(listEl.querySelectorAll(".flip-card")).map(
       (el) => el.dataset.id,
     );
-    items.sort((a, b) => newOrderIds.indexOf(a.id) - newOrderIds.indexOf(b.id));
+    reorderItems(newOrderIds);
     saveItems();
     render();
   });
+
+  // newOrderIds는 현재 화면에 보이는(하위 필터가 적용된) 카드들의 새 순서다.
+  // 화면에 없는(다른 구분의) 항목은 원래 있던 자리에 그대로 두고, 보이는 항목들만 새 순서로 맞춰 끼워넣는다.
+  function reorderItems(newOrderIds) {
+    const visibleSet = new Set(newOrderIds);
+    const queue = newOrderIds
+      .map((id) => items.find((it) => it.id === id))
+      .filter(Boolean);
+    let i = 0;
+    items = items.map((it) => (visibleSet.has(it.id) ? queue[i++] : it));
+  }
 
   function buildCard(item, idx) {
     const card = document.createElement("article");
@@ -822,6 +853,14 @@
     });
   });
 
+  subfilterBtns.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      keywordSubFilter = btn.dataset.sub;
+      subfilterBtns.forEach((b) => b.classList.toggle("active", b === btn));
+      render();
+    });
+  });
+
   function handleDeleteClick(id, btnEl, onConfirm) {
     if (confirming && confirming.id === id) {
       clearTimeout(confirming.timeout);
@@ -893,6 +932,7 @@
     if (e.key === "Escape") {
       if (!modalOverlay.hidden) closeModal();
       if (!importOverlay.hidden) closeImportModal();
+      if (!backupOverlay.hidden) closeBackupModal();
     }
     if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && !modalOverlay.hidden)
       saveBtn.click();
@@ -1059,6 +1099,103 @@
       b.setAttribute("aria-selected", match ? "true" : "false");
     });
     render();
+  });
+
+  function openBackupModal() {
+    backupFileInput.value = "";
+    backupOverlay.hidden = false;
+    document.body.classList.add("modal-open");
+  }
+  function closeBackupModal() {
+    backupOverlay.hidden = true;
+    document.body.classList.remove("modal-open");
+    backupFileInput.value = "";
+  }
+  backupBtn.addEventListener("click", openBackupModal);
+  backupCloseBtn.addEventListener("click", closeBackupModal);
+  backupOverlay.addEventListener("click", (e) => {
+    if (e.target === backupOverlay) closeBackupModal();
+  });
+
+  exportBtn.addEventListener("click", () => {
+    const payload = { exportedAt: new Date().toISOString(), items };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const dateStr = new Date().toISOString().slice(0, 10);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `interview_qna_backup_${dateStr}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  });
+
+  function normalizeImportedItems(list) {
+    list.forEach((it) => {
+      if (it.category !== "common" && it.category !== "major")
+        it.category = "common";
+      if (!Array.isArray(it.followups)) it.followups = [];
+      if (!Array.isArray(it.keywords)) it.keywords = [];
+      if (!it.id) it.id = uid();
+      if (typeof it.a !== "string") it.a = "";
+      it.followups.forEach((fu) => {
+        if (!Array.isArray(fu.keywords)) fu.keywords = [];
+        if (!fu.id) fu.id = uid();
+      });
+    });
+    return list;
+  }
+
+  backupFileInput.addEventListener("change", () => {
+    const file = backupFileInput.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      let parsed;
+      try {
+        parsed = JSON.parse(reader.result);
+      } catch (e) {
+        alert(
+          "파일을 읽는 중 문제가 발생했어요. 올바른 백업(.json) 파일인지 확인해주세요.",
+        );
+        return;
+      }
+      const incoming = Array.isArray(parsed)
+        ? parsed
+        : Array.isArray(parsed.items)
+          ? parsed.items
+          : null;
+      if (!incoming) {
+        alert("올바른 백업 파일이 아니에요.");
+        return;
+      }
+      normalizeImportedItems(incoming);
+
+      if (importMergeCheckbox.checked) {
+        const existingIds = new Set(items.map((it) => it.id));
+        const toAdd = incoming.filter((it) => !existingIds.has(it.id));
+        items = items.concat(toAdd);
+        saveItems();
+        closeBackupModal();
+        render();
+        alert(
+          `${toAdd.length}개 항목을 새로 병합했어요. (중복 ${incoming.length - toAdd.length}개는 건너뜀)`,
+        );
+      } else {
+        const ok = confirm(
+          `현재 기기에 저장된 데이터를 모두 지우고 ${incoming.length}개 항목으로 덮어씁니다. 계속할까요?`,
+        );
+        if (!ok) return;
+        items = incoming;
+        saveItems();
+        closeBackupModal();
+        render();
+      }
+    };
+    reader.readAsText(file);
   });
 
   function applyTheme(theme) {
