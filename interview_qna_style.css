@@ -767,6 +767,44 @@ button {
   margin: -6px 0 4px;
 }
 
+.meta-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.sync-indicator {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+.sync-indicator.on {
+  color: #3fa66e;
+}
+.sync-indicator.error {
+  color: var(--danger);
+}
+
+.sync-code-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+}
+.sync-code-row input {
+  flex: 1;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 13px;
+}
+.sync-actions {
+  justify-content: flex-start;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
 .backup-heading {
   font-size: 14px;
   margin: 18px 0 4px;

@@ -33,6 +33,18 @@
   const exportBtn = document.getElementById("exportBtn");
   const backupFileInput = document.getElementById("backupFileInput");
   const importMergeCheckbox = document.getElementById("importMergeCheckbox");
+  const syncIndicator = document.getElementById("syncIndicator");
+  const syncStatusText = document.getElementById("syncStatusText");
+  const firebaseConfigInput = document.getElementById("firebaseConfigInput");
+  const syncCodeInput = document.getElementById("syncCodeInput");
+  const generateCodeBtn = document.getElementById("generateCodeBtn");
+  const connectSyncBtn = document.getElementById("connectSyncBtn");
+  const disconnectSyncBtn = document.getElementById("disconnectSyncBtn");
+
+  const SYNC_CONFIG_KEY = "interviewQnA.syncConfig.v1";
+  let syncDocRef = null;
+  let syncUnsubscribe = null;
+  let applyingRemoteUpdate = false; // 원격에서 받은 데이터를 반영하는 동안, 되돌려 push하지 않도록 막는 플래그
 
   const modalOverlay = document.getElementById("modalOverlay");
   const modalTitle = document.getElementById("modalTitle");
@@ -71,6 +83,17 @@
   }
   function saveItems() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+    if (syncDocRef && !applyingRemoteUpdate) {
+      syncDocRef
+        .set({
+          items,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        })
+        .catch((err) => {
+          console.error("sync push failed", err);
+          setSyncIndicator("error", "동기화 오류: 저장 실패");
+        });
+    }
   }
   function uid() {
     return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
@@ -1103,6 +1126,15 @@
 
   function openBackupModal() {
     backupFileInput.value = "";
+    const savedConfig = loadSyncConfig();
+    if (savedConfig) {
+      firebaseConfigInput.value = JSON.stringify(
+        savedConfig.firebaseConfig,
+        null,
+        2,
+      );
+      syncCodeInput.value = savedConfig.syncCode;
+    }
     backupOverlay.hidden = false;
     document.body.classList.add("modal-open");
   }
@@ -1116,6 +1148,186 @@
   backupOverlay.addEventListener("click", (e) => {
     if (e.target === backupOverlay) closeBackupModal();
   });
+
+  // ---- 실시간 동기화 (Firebase Firestore) ----
+
+  function loadSyncConfig() {
+    try {
+      const raw = localStorage.getItem(SYNC_CONFIG_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) {
+      return null;
+    }
+  }
+  function saveSyncConfig(config) {
+    localStorage.setItem(SYNC_CONFIG_KEY, JSON.stringify(config));
+  }
+  function clearSyncConfig() {
+    localStorage.removeItem(SYNC_CONFIG_KEY);
+  }
+
+  function setSyncIndicator(state, text) {
+    syncIndicator.classList.remove("on", "error");
+    if (state === "on") {
+      syncIndicator.classList.add("on");
+      syncIndicator.textContent = "🟢 동기화 중";
+    } else if (state === "error") {
+      syncIndicator.classList.add("error");
+      syncIndicator.textContent = "⚠ 동기화 오류";
+    } else {
+      syncIndicator.textContent = "🔌 동기화 꺼짐";
+    }
+    if (text) syncStatusText.textContent = text;
+  }
+
+  // Firebase 콘솔에서 복사한 firebaseConfig는 키에 따옴표가 없는 JS 객체 리터럴이라
+  // 순수 JSON.parse로는 못 읽는다. Function 생성자로 느슨하게 평가한다 (본인이 콘솔에서 복사한 값만 붙여넣는다는 전제).
+  function parseFirebaseConfig(text) {
+    try {
+      let cleaned = text.trim();
+      // "const firebaseConfig = {...};" 형태로 통째로 붙여넣었을 때도 객체 부분만 추출
+      if (/^(const|let|var)\s+\w+\s*=/.test(cleaned)) {
+        cleaned = cleaned.slice(cleaned.indexOf("=") + 1).trim();
+      }
+      cleaned = cleaned.replace(/;\s*$/, ""); // 끝에 붙은 세미콜론 제거
+      const fn = new Function("return (" + cleaned + ")");
+      const cfg = fn();
+      if (cfg && typeof cfg === "object" && cfg.projectId) return cfg;
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function startSync(config, syncCode, isInitialConnect) {
+    try {
+      const app = firebase.apps.length
+        ? firebase.app()
+        : firebase.initializeApp(config);
+      const db = firebase.firestore(app);
+      syncDocRef = db.collection("qna_sync").doc(syncCode);
+    } catch (e) {
+      setSyncIndicator("error", "동기화 오류: Firebase 설정을 확인해주세요.");
+      syncDocRef = null;
+      return;
+    }
+
+    if (syncUnsubscribe) {
+      syncUnsubscribe();
+      syncUnsubscribe = null;
+    }
+
+    const attachListener = () => {
+      syncUnsubscribe = syncDocRef.onSnapshot(
+        (snap) => {
+          if (snap.metadata.hasPendingWrites) return; // 이 기기가 방금 쓴 내용이 그대로 echo된 것 — 무시
+          if (!snap.exists) return;
+          const data = snap.data();
+          if (!Array.isArray(data.items)) return;
+          applyingRemoteUpdate = true;
+          items = data.items;
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+          render();
+          applyingRemoteUpdate = false;
+          setSyncIndicator("on", `동기화 중이에요. 코드: ${syncCode}`);
+        },
+        (err) => {
+          console.error("sync listen error", err);
+          setSyncIndicator("error", "동기화 오류: " + err.message);
+        },
+      );
+    };
+
+    if (isInitialConnect) {
+      syncDocRef
+        .get()
+        .then((snap) => {
+          if (snap.exists && Array.isArray(snap.data().items)) {
+            const remoteItems = snap.data().items;
+            const existingIds = new Set(items.map((it) => it.id));
+            const toAdd = remoteItems.filter((it) => !existingIds.has(it.id));
+            items = items.concat(toAdd);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+            render();
+          }
+          // 이 기기의 (병합된) 데이터를 다시 올려서 양쪽을 맞춘다.
+          syncDocRef
+            .set({
+              items,
+              updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+            })
+            .then(() => {
+              attachListener();
+              setSyncIndicator("on", `동기화 중이에요. 코드: ${syncCode}`);
+            })
+            .catch((err) => {
+              console.error("initial sync push failed", err);
+              setSyncIndicator("error", "동기화 오류: " + err.message);
+            });
+        })
+        .catch((err) => {
+          console.error("initial sync fetch failed", err);
+          setSyncIndicator("error", "동기화 오류: " + err.message);
+        });
+    } else {
+      attachListener();
+    }
+  }
+
+  function stopSync() {
+    if (syncUnsubscribe) {
+      syncUnsubscribe();
+      syncUnsubscribe = null;
+    }
+    syncDocRef = null;
+    clearSyncConfig();
+    setSyncIndicator(
+      "off",
+      "동기화가 꺼져 있어요. Firebase 설정과 동기화 코드를 넣고 연결하세요.",
+    );
+    connectSyncBtn.hidden = false;
+    disconnectSyncBtn.hidden = true;
+  }
+
+  generateCodeBtn.addEventListener("click", () => {
+    const code = crypto.randomUUID
+      ? crypto.randomUUID()
+      : Date.now().toString(36) + Math.random().toString(36).slice(2);
+    syncCodeInput.value = code;
+  });
+
+  connectSyncBtn.addEventListener("click", () => {
+    const config = parseFirebaseConfig(firebaseConfigInput.value.trim());
+    if (!config) {
+      alert(
+        "Firebase 설정을 읽을 수 없어요. 콘솔에서 복사한 firebaseConfig를 그대로 붙여넣어주세요.",
+      );
+      return;
+    }
+    const syncCode = syncCodeInput.value.trim();
+    if (!syncCode) {
+      alert('동기화 코드를 입력하거나 "코드 생성" 버튼으로 만들어주세요.');
+      return;
+    }
+    saveSyncConfig({ firebaseConfig: config, syncCode });
+    connectSyncBtn.hidden = true;
+    disconnectSyncBtn.hidden = false;
+    setSyncIndicator("off", "연결하는 중...");
+    startSync(config, syncCode, true);
+  });
+
+  disconnectSyncBtn.addEventListener("click", () => {
+    stopSync();
+  });
+
+  (function initSyncOnLoad() {
+    const saved = loadSyncConfig();
+    if (saved && saved.firebaseConfig && saved.syncCode) {
+      connectSyncBtn.hidden = true;
+      disconnectSyncBtn.hidden = false;
+      startSync(saved.firebaseConfig, saved.syncCode, false);
+    }
+  })();
 
   exportBtn.addEventListener("click", () => {
     const payload = { exportedAt: new Date().toISOString(), items };
