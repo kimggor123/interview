@@ -1182,15 +1182,29 @@
 
   // Firebase 콘솔에서 복사한 firebaseConfig는 키에 따옴표가 없는 JS 객체 리터럴이라
   // 순수 JSON.parse로는 못 읽는다. Function 생성자로 느슨하게 평가한다 (본인이 콘솔에서 복사한 값만 붙여넣는다는 전제).
+  // 붙여넣은 텍스트 어디에 있든 "firebaseConfig = { ... }" 객체 부분만 중괄호 짝을 맞춰 추출한다.
+  // import문, 주석, initializeApp(...) 같은 나머지 코드가 같이 붙어있어도 무시된다.
+  function extractConfigObjectText(text) {
+    const nameIdx = text.indexOf("firebaseConfig");
+    const searchFrom = nameIdx !== -1 ? nameIdx : 0;
+    const braceStart = text.indexOf("{", searchFrom);
+    if (braceStart === -1) return null;
+    let depth = 0;
+    for (let i = braceStart; i < text.length; i++) {
+      if (text[i] === "{") depth++;
+      else if (text[i] === "}") {
+        depth--;
+        if (depth === 0) return text.slice(braceStart, i + 1);
+      }
+    }
+    return null;
+  }
+
   function parseFirebaseConfig(text) {
     try {
-      let cleaned = text.trim();
-      // "const firebaseConfig = {...};" 형태로 통째로 붙여넣었을 때도 객체 부분만 추출
-      if (/^(const|let|var)\s+\w+\s*=/.test(cleaned)) {
-        cleaned = cleaned.slice(cleaned.indexOf("=") + 1).trim();
-      }
-      cleaned = cleaned.replace(/;\s*$/, ""); // 끝에 붙은 세미콜론 제거
-      const fn = new Function("return (" + cleaned + ")");
+      const objText = extractConfigObjectText(text.trim());
+      if (!objText) return null;
+      const fn = new Function("return (" + objText + ")");
       const cfg = fn();
       if (cfg && typeof cfg === "object" && cfg.projectId) return cfg;
       return null;
