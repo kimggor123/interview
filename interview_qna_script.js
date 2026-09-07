@@ -948,9 +948,9 @@
   addBtn.addEventListener("click", () => openModal({ mode: "main" }));
   emptyAddBtn.addEventListener("click", () => openModal({ mode: "main" }));
   cancelBtn.addEventListener("click", closeModal);
-  modalOverlay.addEventListener("click", (e) => {
-    if (e.target === modalOverlay) closeModal();
-  });
+  // modalOverlay.addEventListener("click", (e) => {
+  //   if (e.target === modalOverlay) closeModal();
+  // });
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") {
       //if (!modalOverlay.hidden) closeModal();
