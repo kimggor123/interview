@@ -1173,7 +1173,7 @@
       syncIndicator.classList.add("on");
       syncIndicator.textContent = "🟢 동기화 중";
       browserNote.textContent =
-        "이 브라우저에서 실시간 동기화가 활성화되어 있어요. 다른 기기에서도 같은 코드로 접속하면 질문/답변이 공유됩니다.";
+        "이 브라우저에서 실시간 동기화가 활성화되어 있어요.";
     } else if (state === "error") {
       syncIndicator.classList.add("error");
       syncIndicator.textContent = "⚠ 동기화 오류";
