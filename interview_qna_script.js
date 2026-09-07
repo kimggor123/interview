@@ -953,7 +953,7 @@
   });
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") {
-      if (!modalOverlay.hidden) closeModal();
+      //if (!modalOverlay.hidden) closeModal();
       if (!importOverlay.hidden) closeImportModal();
       if (!backupOverlay.hidden) closeBackupModal();
     }
